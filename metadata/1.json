@@ -1,0 +1,107 @@
+{
+    "name": "Luxury NYC Penthouse",
+    "address": "157 W 57th St APT 49B, New York, NY 10019",
+    "description": "Luxury Penthouse located in the heart of NYC",
+    "image": "https://ipfs.io/ipfs/QmRetSyXvKLXp6Kj3GutE7K5ETbgSdsAG6Ao3csLNrvFtM",
+    "id": "1",
+    "attributes": [
+        {
+            "trait_type": "Monthly Rent",
+            "value": 3.5,
+            "currency": "ETH"
+        },
+        {
+            "trait_type": "Security Deposit",
+            "value": 7.0,
+            "currency": "ETH"
+        },
+        {
+            "trait_type": "Minimum Lease Term",
+            "value": 6,
+            "unit": "months"
+        },
+        {
+            "trait_type": "Maximum Lease Term",
+            "value": 24,
+            "unit": "months"
+        },
+        {
+            "trait_type": "Property Type",
+            "value": "Apartment"
+        },
+        {
+            "trait_type": "Furnishing Status",
+            "value": "Fully Furnished"
+        },
+        {
+            "trait_type": "Bedrooms",
+            "value": 2
+        },
+        {
+            "trait_type": "Bathrooms",
+            "value": 2
+        },
+        {
+            "trait_type": "Square Feet",
+            "value": 1200
+        },
+        {
+            "trait_type": "Floor",
+            "value": 15
+        },
+        {
+            "trait_type": "Year Built",
+            "value": 2019
+        },
+        {
+            "trait_type": "Pet Policy",
+            "value": "Allowed with Deposit"
+        },
+        {
+            "trait_type": "Parking",
+            "value": "1 Covered Spot"
+        },
+        {
+            "trait_type": "Utilities Included",
+            "value": ["Water", "Garbage", "Internet"]
+        },
+        {
+            "trait_type": "Available From",
+            "value": "2024-12-01"
+        },
+        {
+            "trait_type": "Amenities",
+            "value": [
+                "Swimming Pool",
+                "Gym",
+                "24/7 Security",
+                "Rooftop Garden",
+                "Package Room"
+            ]
+        },
+        {
+            "trait_type": "Maintenance",
+            "value": "24/7 On-call"
+        },
+        {
+            "trait_type": "Smart Home Features",
+            "value": [
+                "Digital Locks",
+                "Smart Thermostat",
+                "Video Doorbell"
+            ]
+        }
+    ],
+    "rental_terms": {
+        "payment_schedule": "Monthly",
+        "late_fee": "0.1 ETH after 5th of month",
+        "maintenance_responsibility": "Landlord handles all major repairs",
+        "utility_responsibility": "Tenant pays electricity and gas",
+        "subletting_policy": "Not allowed without written permission",
+        "move_in_fees": {
+            "application_fee": "0.05 ETH",
+            "cleaning_fee": "0.1 ETH",
+            "key_deposit": "0.05 ETH"
+        }
+    }
+}
