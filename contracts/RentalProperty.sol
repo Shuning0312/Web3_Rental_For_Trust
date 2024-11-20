@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "hardhat/console.sol";
 
 contract RentalProperty is ERC721URIStorage {
     using Counters for Counters.Counter;
@@ -40,17 +41,19 @@ contract RentalProperty is ERC721URIStorage {
         rentalEscrowAddress = _escrowAddress;
     }
 
+    // 铸造NFT并设置URI
+    function mintProperty(address to, uint256 tokenId, string memory uri) public {
+        _mint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+    }
+
     // 创建新房产NFT
     function createProperty(
-        string memory tokenURI,
         uint256 rentPrice,
         uint256 securityDeposit
     ) public returns (uint256) {
         _tokenIds.increment();
         uint256 newTokenId = _tokenIds.current();
-
-        _mint(msg.sender, newTokenId);
-        _setTokenURI(newTokenId, tokenURI);
 
         properties[newTokenId] = Property({
             landlord: msg.sender,
@@ -66,6 +69,33 @@ contract RentalProperty is ERC721URIStorage {
 
         return newTokenId;
     }
+
+    // // 创建新房产NFT
+    // function createProperty(
+    //     string memory tokenURI,
+    //     uint256 rentPrice,
+    //     uint256 securityDeposit
+    // ) public returns (uint256) {
+    //     _tokenIds.increment();
+    //     uint256 newTokenId = _tokenIds.current();
+
+    //     _mint(msg.sender, newTokenId);
+    //     _setTokenURI(newTokenId, tokenURI);
+
+    //     properties[newTokenId] = Property({
+    //         landlord: msg.sender,
+    //         isAvailable: true,
+    //         rentPrice: rentPrice,
+    //         securityDeposit: securityDeposit
+    //     });
+
+    //     landlordPropertyCount[msg.sender]++;
+
+    //     emit PropertyCreated(newTokenId, msg.sender);
+    //     emit PropertyListed(newTokenId, rentPrice, securityDeposit);
+
+    //     return newTokenId;
+    // }
 
     // 更新房产租金信息
     function updatePropertyPrice(
@@ -107,6 +137,7 @@ contract RentalProperty is ERC721URIStorage {
         uint256 rentPrice,
         uint256 securityDeposit
     ) {
+        // console.log("Ren-getpinfo()");
         Property storage prop = properties[tokenId];
         return (
             prop.landlord,
@@ -134,4 +165,5 @@ contract RentalProperty is ERC721URIStorage {
         }
         return result;
     }
+
 }
