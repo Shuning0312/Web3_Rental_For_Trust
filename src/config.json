@@ -1,10 +1,10 @@
 {
   "31337": {
     "rentalProperty": {
-      "address": "0x172076E0166D1F9Cc711C77Adf8488051744980C"
+      "address": "0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB"
     },
     "rentalEscrow": {
-      "address": "0x4EE6eCAD1c2Dae9f525404De8555724e3c35d07B"
+      "address": "0x3155755b79aA083bd953911C92705B7aA82a18F9"
     }
   }
 }

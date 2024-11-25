@@ -19,18 +19,15 @@ function App() {
   const [rentalEscrow, setRentalEscrow] = useState(null)
   const [account, setAccount] = useState(null)
   const [properties, setProperties] = useState([])
-  const [selectedProperty, setSelectedProperty] = useState({})
+  const [property, setSelectedProperty] = useState({})
   const [toggle, setToggle] = useState(false)
-
-  const [isLandlord, setIsLandlord] = useState(false)
-  const [isTenant, setIsTenant] = useState(false)
 
   const loadBlockchainData = async () => {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum)
       setProvider(provider)
-
       const network = await provider.getNetwork()
+      console.log("network: ", network)
 
       // 获取租房合约实例
       const abi = RentalProperty.abi;
@@ -48,9 +45,11 @@ function App() {
       )
       setRentalEscrow(rentalEscrow)
 
+      console.log("合约部署成功")
+      
+
       // 加载房产列表
-      // const totalSupply = await rentalProperty.tokenCount()
-      const totalSupply = 1
+      const totalSupply = await rentalProperty.totalSupply()
       const properties = []
 
       for (let i = 1; i <= totalSupply; i++) {
@@ -59,41 +58,40 @@ function App() {
         const metadata = await response.json()
         
         // 获取房产详细信息
-        const [owner, isAvailable, rentPrice, securityDeposit] = await rentalProperty.getPropertyInfo(i)
+        console.log("开始获取")
+        // const [, rented, currentTenant] = await rentalEscrow.getRentalStatus(i)
+        const [rent, deposit, status] = await rentalEscrow.getPropertyInfo(i)
         
         properties.push({
           id: i,
-          owner: owner,
+          // owner: currentTenant,
           name: metadata.name,
           description: metadata.description,
           image: metadata.image,
           attributes: metadata.attributes, // 保留原有属性
-          isAvailable: isAvailable,
-          rentPrice: ethers.utils.formatEther(rentPrice),
-          securityDeposit: ethers.utils.formatEther(securityDeposit)
+          isAvailable: status,
+          rentPrice: ethers.utils.formatEther(rent),
+          securityDeposit: ethers.utils.formatEther(deposit)
         })
       }
 
       setProperties(properties)
+      console.log("setOK")
+
 
       // 获取账户
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const account = ethers.utils.getAddress(accounts[0])
       setAccount(account);
 
-      // 检查用户角色
-      // const landlordCount = await rentalProperty.landlordPropertyCount(account)
-      // setIsLandlord(landlordCount > 0)
-
-      // const activeTenant = await rentalEscrow.getActiveTenant(1)
-      // setIsTenant(activeTenant.toLowerCase() === account.toLowerCase())
-
       // 监听账户变化
       window.ethereum.on('accountsChanged', async () => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         const account = ethers.utils.getAddress(accounts[0])
         setAccount(account);
+
       })
+
 
     } catch (error) {
       console.error('Error loading blockchain data:', error)
@@ -132,8 +130,8 @@ function App() {
                 </p>
                 {property.attributes && (
                   <p>
-                    <strong>{property.attributes[2]?.value}</strong> bds |
-                    <strong>{property.attributes[3]?.value}</strong> ba |
+                    <strong>{property.attributes[6]?.value}</strong> bds |
+                    <strong>{property.attributes[7]?.value}</strong> ba |
                     <strong>{property.attributes[4]?.value}</strong> sqft
                   </p>
                 )}
@@ -148,13 +146,13 @@ function App() {
 
       {toggle && (
         <Home 
-          property={selectedProperty}
+          property={property}
           provider={provider}
           account={account}
           rentalEscrow={rentalEscrow}
           togglePop={togglePop}
-          isLandlord={isLandlord}
-          isTenant={isTenant}
+          // isLandlord={isLandlord}
+          // isTenant={isTenant}
         />
       )}
 

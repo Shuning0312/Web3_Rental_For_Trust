@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
+
+interface IERC721 {
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _id
+    ) external;
+}
+
 interface IRentalProperty {
     function getPropertyInfo(uint256 tokenId) external view returns (
         address landlord,
@@ -13,140 +23,180 @@ interface IRentalProperty {
 }
 
 contract RentalEscrow {
-    IRentalProperty public immutable rentalProperty;
+    address public nftAddress;
+    address public landlord;
+
+    // 新增状态变量
+    enum RentalStatus { 
+        NotListed,  // 未挂牌
+        Available,      // 可租
+        Rented,         // 已出租
+        Ended           // 租约结束
+    }
     
-    // 租赁信息结构
-    struct Rental {
-        address tenant;         // 租客地址
-        uint256 startTime;      // 租期开始时间
-        uint256 endTime;        // 租期结束时间
-        uint256 rentAmount;     // 月租金
-        uint256 securityDeposit;// 押金
-        bool active;            // 是否处于激活状态
-        bool depositReturned;   // 押金是否已退还
+    // 修饰符
+    modifier onlyTenant(uint256 _nftID) {
+        require(msg.sender == tenant[_nftID], "Only tenant can call this method");
+        _;
     }
 
-    // tokenId => Rental
-    mapping(uint256 => Rental) public rentals;
+    modifier onlyLandlord() {
+        require(msg.sender == landlord, "Only landlord can call this method");
+        _;
+    }
+
+    modifier onlyLandlordOrTenant(uint256 _nftID) {
+        require(msg.sender == landlord || msg.sender == tenant[_nftID], 
+                "Only landlord or tenant can call this method");
+        _;
+    }
     
-    // 租客地址 => 租赁的房产列表
-    mapping(address => uint256[]) public tenantRentals;
-    
+    // 状态映射
+    mapping(uint256 => RentalStatus) public propertyStatus;  // 房产当前状态
+    mapping(uint256 => uint256) public rentalDuration;       // 租期(月)
+    mapping(uint256 => uint256) public rentalPrice;     // 月租金
+    mapping(uint256 => uint256) public securityDeposit; // 押金
+    mapping(uint256 => address) public tenant;          // 租客
+    mapping(uint256 => uint256) public rentalStartDate; // 租期开始时间
+    mapping(uint256 => uint256) public rentalEndDate;   // 租期结束时间
+    mapping(uint256 => uint256) public lastRentPayment; // 上次租金支付时间
+
+    mapping(uint256 => mapping(address => bool)) public approval;
+
+
     // 事件
-    event RentalCreated(
-        uint256 indexed tokenId,
-        address indexed landlord,
-        address indexed tenant,
-        uint256 startTime,
-        uint256 endTime
+    event PropertyListed(
+        uint256 indexed nftID, 
+        uint256 rentalPrice, 
+        uint256 securityDeposit
     );
-    event RentPaid(uint256 indexed tokenId, address indexed tenant, uint256 amount);
-    event RentalEnded(uint256 indexed tokenId, address indexed tenant);
-    event SecurityDepositReturned(uint256 indexed tokenId, address indexed tenant);
+    event RentalStarted(
+        uint256 indexed nftID,
+        address indexed tenant,
+        uint256 startDate,
+        uint256 endDate
+    );
+    event RentalPaid(
+        uint256 indexed nftID,
+        address indexed tenant,
+        uint256 amount
+    );
+    event RentalEnded(
+        uint256 indexed nftID,
+        address indexed tenant,
+        bool depositReturned
+    );
 
-    constructor(address _rentalProperty) {
-        rentalProperty = IRentalProperty(_rentalProperty);
+    constructor(address _nftAddress, address _landlord) {
+        nftAddress = _nftAddress;
+        landlord = _landlord;
     }
 
-    // 创建租赁合约
-    function createRental(uint256 tokenId, uint256 duration) public payable {
-        (
-            address landlord,
-            bool isAvailable,
-            uint256 rentPrice,
-            uint256 securityDeposit
-        ) = rentalProperty.getPropertyInfo(tokenId);
+    // 房东挂牌出租
+    function listForRent(
+        uint256 _nftID,
+        uint256 _rentalPrice,
+        uint256 _securityDeposit
+    ) public onlyLandlord {
+        // 将NFT转移到合约
+        IERC721(nftAddress).transferFrom(msg.sender, address(this), _nftID);
 
-        require(isAvailable, "Property not available");
-        require(msg.value >= rentPrice + securityDeposit, "Insufficient payment");
+        rentalPrice[_nftID] = _rentalPrice;
+        securityDeposit[_nftID] = _securityDeposit;
+        propertyStatus[_nftID] = RentalStatus.Available;
 
-        uint256 startTime = block.timestamp;
-        uint256 endTime = startTime + (duration * 30 days);
+        emit PropertyListed(_nftID, _rentalPrice, _securityDeposit);
+    }
 
-        rentals[tokenId] = Rental({
-            tenant: msg.sender,
-            startTime: startTime,
-            endTime: endTime,
-            rentAmount: rentPrice,
-            securityDeposit: securityDeposit,
-            active: true,
-            depositReturned: false
-        });
-
-        tenantRentals[msg.sender].push(tokenId);
+    // 租客直接支付押金和首月租金开始租赁
+    function startRental(uint256 _nftID, uint256 _durationInMonths) public payable {
+        require(propertyStatus[_nftID] == RentalStatus.Available, "Property not available");
+        require(_durationInMonths > 0, "Invalid rental duration");
         
-        // 更新租赁状态
-        rentalProperty.setRentalStatus(tokenId, true);
-
+        uint256 totalAmount = rentalPrice[_nftID] + securityDeposit[_nftID];
+        require(msg.value == totalAmount, "Incorrect payment amount");
+        
+        tenant[_nftID] = msg.sender;
+        rentalDuration[_nftID] = _durationInMonths;
+        rentalStartDate[_nftID] = block.timestamp;
+        rentalEndDate[_nftID] = block.timestamp + (_durationInMonths * 30 days);
+        lastRentPayment[_nftID] = block.timestamp;
+        propertyStatus[_nftID] = RentalStatus.Rented;
+        
         // 转移首月租金给房东
-        payable(landlord).transfer(rentPrice);
-
-        emit RentalCreated(tokenId, landlord, msg.sender, startTime, endTime);
-    }
-
-    // 支付月租
-    function payRent(uint256 tokenId) public payable {
-        Rental storage rental = rentals[tokenId];
-        require(rental.active, "Rental not active");
-        require(msg.sender == rental.tenant, "Not the tenant");
-        require(msg.value >= rental.rentAmount, "Insufficient rent payment");
-
-        (address landlord,,,) = rentalProperty.getPropertyInfo(tokenId);
-        payable(landlord).transfer(msg.value);
-
-        emit RentPaid(tokenId, msg.sender, msg.value);
-    }
-
-    // 结束租约并退还押金
-    function endRental(uint256 tokenId) public {
-        Rental storage rental = rentals[tokenId];
-        (address landlord,,,) = rentalProperty.getPropertyInfo(tokenId);
+        payable(landlord).transfer(rentalPrice[_nftID]);
         
-        require(msg.sender == landlord || msg.sender == rental.tenant, "Unauthorized");
-        require(rental.active, "Rental not active");
-        require(block.timestamp >= rental.endTime, "Rental period not ended");
-
-        rental.active = false;
-        payable(rental.tenant).transfer(rental.securityDeposit);
-        rental.depositReturned = true;
-
-        // 更新租赁状态
-        rentalProperty.setRentalStatus(tokenId, false);
-
-        emit RentalEnded(tokenId, rental.tenant);
-        emit SecurityDepositReturned(tokenId, rental.tenant);
-    }
-
-    // 获取租客的所有租赁
-    function getTenantRentals(address tenant) 
-        public 
-        view 
-        returns (uint256[] memory) 
-    {
-        return tenantRentals[tenant];
-    }
-
-    // 检查租约状态
-    function checkRentalStatus(uint256 tokenId) 
-        public 
-        view 
-        returns (
-            bool isActive,
-            uint256 startTime,
-            uint256 endTime,
-            uint256 remainingTime
-        ) 
-    {
-        Rental memory rental = rentals[tokenId];
-        return (
-            rental.active,
-            rental.startTime,
-            rental.endTime,
-            rental.endTime > block.timestamp ? 
-                rental.endTime - block.timestamp : 0
+        emit RentalStarted(
+            _nftID, 
+            msg.sender, 
+            rentalStartDate[_nftID], 
+            rentalEndDate[_nftID]
         );
     }
+    
+    // 支付月租
+    function payRent(uint256 _nftID) public payable onlyTenant(_nftID) {
+        require(propertyStatus[_nftID] == RentalStatus.Rented, "Property not rented");
+        require(msg.value == rentalPrice[_nftID], "Incorrect rent amount");
+        
+        lastRentPayment[_nftID] = block.timestamp;
+        payable(landlord).transfer(msg.value);
 
-    // 接收ETH
+        emit RentalPaid(_nftID, msg.sender, msg.value);
+    }
+    
+    // 结束租赁
+    function endRental(uint256 _nftID) public {
+        require(propertyStatus[_nftID] == RentalStatus.Rented, "Property not rented");
+        require(msg.sender == landlord || msg.sender == tenant[_nftID], 
+                "Only landlord or tenant can end rental");
+        require(block.timestamp >= rentalEndDate[_nftID] || msg.sender == landlord,
+                "Rental period not ended");
+
+        bool isClean = true; // 在实际应用中可以添加房屋状况检查逻辑
+        
+        if (isClean) {
+            // 退还押金给租客
+            payable(tenant[_nftID]).transfer(securityDeposit[_nftID]);
+        } else {
+            // 如果房屋有损坏，押金转给房东
+            payable(landlord).transfer(securityDeposit[_nftID]);
+        }
+
+        // 将NFT归还给房东
+        IERC721(nftAddress).transferFrom(address(this), landlord, _nftID);
+        
+        propertyStatus[_nftID] = RentalStatus.Ended;
+        
+        emit RentalEnded(_nftID, tenant[_nftID], isClean);
+    }
+    
+    // 获取房产信息
+    function getPropertyInfo(uint256 _nftID) public view returns (
+        uint256 rent,
+        uint256 deposit,
+        RentalStatus status
+    ) {
+        return (
+            rentalPrice[_nftID],
+            securityDeposit[_nftID],
+            propertyStatus[_nftID]
+        );
+    }
+    
     receive() external payable {}
+
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
+    // // Put Under Contract (only buyer - payable escrow)
+    // function depositEarnest(uint256 _nftID) public payable onlyTenant(_nftID) {
+    //     console.log("has gone depositEarnest ");
+    //     require(msg.value >= securityDeposit[_nftID]);
+    // }
+
+    // function approve(uint256 _nftID) public {
+    //     approval[_nftID][msg.sender] = true;
+    // }
 }

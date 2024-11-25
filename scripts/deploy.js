@@ -11,36 +11,30 @@ const tokens = (n) => {
 
 async function verifyContractState(rentalProperty, rentalEscrow, landlord) {
   console.log("\nVerifying contract state...\n");
-  
-  try {
+
       // 从第一个房产开始验证
-      try {
-          const [owner, isAvailable, rentPrice, securityDeposit] = await rentalProperty.getPropertyInfo(1);
-          // console.log("\nProperty #1 Info:");
-          // console.log("Owner:", owner);
-          // console.log("Is Available:", isAvailable);
-          // console.log("Rent Price:", ethers.utils.formatEther(rentPrice), "ETH");
-          // console.log("Security Deposit:", ethers.utils.formatEther(securityDeposit), "ETH");
+      console.log("\n--------------------Property #1 Info:----------------------");
+      const [owner1, isAvailable, rentPrice, securityDeposit] = await rentalProperty.getPropertyInfo(1);
+      console.log("Owner1:", owner1);
+      console.log("Is Available:", isAvailable);
+      console.log("Rent Price:", ethers.utils.formatEther(rentPrice), "ETH");
+      console.log("Security Deposit:", ethers.utils.formatEther(securityDeposit), "ETH");
           
-          const uri = await rentalProperty.tokenURI(1);
-          console.log("Token URI:", uri);
+      const uri = await rentalProperty.tokenURI(1);
+      console.log("Token URI:", uri);
 
-          // 验证房东房产数量
-          const landlordCount = await rentalProperty.landlordPropertyCount(owner);
-          console.log("Landlord property count:", landlordCount.toString());
+      // 验证房东房产数量
+      const landlordCount = await rentalProperty.landlordPropertyCount(owner1);
+      console.log("Landlord property count:", landlordCount.toString());
 
-          // 获取房东的所有房产
-          const landlordProperties = await rentalProperty.getLandlordProperties(owner);
-          console.log("Landlord properties:", landlordProperties.map(p => p.toString()));
+      // 获取房东的所有房产
+      const landlordProperties = await rentalProperty.getLandlordProperties(owner1);
+      console.log("Landlord properties:", landlordProperties.map(p => p.toString()));
 
-          // 验证租赁状态
-          const isRented = await rentalProperty.isRented(1);
-          console.log("Is property rented:", isRented);
+      // 验证租赁状态
+      const isRented = await rentalProperty.isRented(1);
+      console.log("Is property rented:", isRented);
 
-      } catch (error) {
-          console.log("Error getting property info:", error.message);
-      }
-      
       // 验证 Escrow 合约地址
       const escrowAddress = await rentalProperty.rentalEscrowAddress();
       console.log("\nEscrow address in RentalProperty:", escrowAddress);
@@ -49,91 +43,74 @@ async function verifyContractState(rentalProperty, rentalEscrow, landlord) {
       // 验证 NFT 信息
       const name = await rentalProperty.name();
       const symbol = await rentalProperty.symbol();
-      console.log("\nNFT Info:");
-      console.log("Name:", name);
-      console.log("Symbol:", symbol);
-      
-  } catch (error) {
-      console.log("Error in contract verification:", error.message);
-  }
+      // console.log("\nNFT Info:");
+      // console.log("Name:", name);
+      // console.log("Symbol:", symbol);
+
 }
 
+console.log("\n--------------------------------Main-----------------------------------------\n");
+
 async function main() {
-  try {
     console.log("Starting deployment...");
 
     // Setup accounts
     const [owner, landlord, tenant] = await ethers.getSigners();
-    console.log("Deploying with landlord account:", landlord.address);
+    console.log("\nDeploying with landlord account:", landlord.address);
     
     // 检查账户余额
     const balance = await landlord.getBalance();
-    console.log("Landlord balance:", ethers.utils.formatEther(balance), "ETH");
-
-    // // Deploy RentalProperty
-    // const RentalProperty = await ethers.getContractFactory('RentalProperty');
-    // const rentalProperty = await RentalProperty.deploy();
-    // await rentalProperty.deployed();
-    // console.log(`Deployed RentalProperty at: ${rentalProperty.address}`);
-
-    // // Deploy RentalEscrow
-    // const RentalEscrow = await ethers.getContractFactory('RentalEscrow');
-    // const rentalEscrow = await RentalEscrow.deploy(rentalProperty.address);
-    // await rentalEscrow.deployed();
-    // console.log(`Deployed RentalEscrow at: ${rentalEscrow.address}`);
+    // console.log("\nLandlord balance:", ethers.utils.formatEther(balance), "ETH");
 
 
     // 创建合约实例
-    console.log("创建合约实例： ",)
-    const abi = RentalProperty.abi;
-    const bytecode = RentalProperty.bytecode;
- 
-    const rentalFactory = new ethers.ContractFactory(abi,bytecode,owner);
-    const rentalProperty =await rentalFactory.deploy();
+    const abi = RentalProperty.abi
+    const bytecode = RentalProperty.bytecode
+    const rentalFactory = new ethers.ContractFactory(abi,bytecode,owner)
+    const rentalProperty = await rentalFactory.deploy()
     console.log("rentalProperty ",rentalProperty.address)
-    // console.log("-------OK----------------OK------------OK------------------------\n")
 
-    console.log("创建合约实例： ",)
-    const abi2 = RentalProperty.abi;
-    const bytecode2 = RentalProperty.bytecode;
- 
-    const rentalEscrowFactory = new ethers.ContractFactory(abi2,bytecode2,owner);
-    const rentalEscrow =await rentalEscrowFactory.deploy();
-    console.log("rentalEscrow ",rentalEscrow.address)
-    console.log("-------创建合约实例OK----------------创建合约实例OK------------创建合约实例OK------------------------\n")
+    const abi2 = RentalEscrow.abi
+    const bytecode2 = RentalEscrow.bytecode
+    const escrowFactory = new ethers.ContractFactory(abi2,bytecode2,owner)
+    const rentalEscrow =await escrowFactory.deploy(
+      rentalProperty.address,
+      landlord.address
+    )
+    // console.log("rentalEscrow ",rentalEscrow.address)
 
 
-    // Set Escrow address in RentalProperty
-    let transaction = await rentalProperty.setRentalEscrowAddress(rentalEscrow.address);
-    await transaction.wait();
-    console.log("Set Escrow address in RentalProperty");
+    for (let i = 0; i < 3; i++) {
+      const transaction = await rentalProperty.connect(landlord).mint(`https://indigo-tiny-aardvark-637.mypinata.cloud/ipfs/QmWDh7VU9rE3AD54PnmJCZBVCsBxNqZsELMhDU9rAHexMP/${i + 1}.json`)
+      console.log("房产的地址：", landlord.address)
+      await transaction.wait()
 
-    // Mint一个房产 URI
-    const propertyURI = "https://indigo-tiny-aardvark-637.mypinata.cloud/ipfs/QmUnZNzrjsxU4KkeKkEV2qiBNJyZhMXABNcFwL2LiNhuPL";
-    await rentalProperty.mintProperty(landlord.address, 1, propertyURI);
-    console.log("mintProperty OK");
-    console.log("-----------------------Mint一个房产OK-------------------------------------\n")
+      // const uri = await rentalProperty.tokenURI(i);
+      const response = await fetch(`https://indigo-tiny-aardvark-637.mypinata.cloud/ipfs/QmWDh7VU9rE3AD54PnmJCZBVCsBxNqZsELMhDU9rAHexMP/${i + 1}.json`);
+      const metadata = await response.json();
+      // console.log(`Metadata for NFT ${i}:`, metadata);
 
-    // Create property
-    transaction = await rentalProperty.connect(landlord).createProperty(
-      tokens(1), // 月租金 1 ETH
-      tokens(2)  // 押金 2 ETH
-    );
-    await transaction.wait();
-    // console.log("Property created with URI:", propertyURI);
+      const rentPrice = metadata.attributes.find(attr => attr.trait_type === "Monthly Rent").value;
+      const securityDeposit = metadata.attributes.find(attr => attr.trait_type === "Security Deposit").value;
 
-    // Approve Escrow
-    transaction = await rentalProperty.connect(landlord).approve(rentalEscrow.address, 1);
-    await transaction.wait();
-    console.log("------------------Approved Escrow contract to manage property #1--------------------\n");
 
-    // Set availability
-    transaction = await rentalProperty.connect(landlord).setPropertyAvailability(1, true);
-    await transaction.wait();
-    // console.log("Set property #1 availability to true");
+      // Approve 托管合约
+      console.log(`Approving NFT ${i} for escrow`);
+      const approveTx = await rentalProperty.connect(landlord).approve(rentalEscrow.address, i+1);
+      await approveTx.wait();
 
+      // 创建房产 (使用JSON中的信息)
+      const listTx = await rentalEscrow.connect(landlord).listForRent(
+        i+1,
+        tokens(rentPrice),
+        tokens(securityDeposit)
+      );
+      await listTx.wait();
+    }
+
+    // console.log("--------------------------------Main-----------------------------------------");
     // 验证合约状态
-    await verifyContractState(rentalProperty, rentalEscrow, landlord);
+    // await verifyContractState(rentalProperty, rentalEscrow, landlord);
 
     // 创建配置对象
     const config = {
@@ -154,22 +131,6 @@ async function main() {
       JSON.stringify(config, null, 2)
     );
     console.log(`\nConfig written to ${configPath}`);
-
-    // 尝试读取元数据验证
-    try {
-      const response = await fetch(propertyURI);
-      const metadata = await response.json();
-      // console.log("\nProperty Metadata:");
-      console.log(JSON.stringify(metadata, null, 2));
-    } catch (error) {
-      console.log("\nCould not fetch metadata, please verify manually:", error.message);
-    }
-
-  } catch (error) {
-    console.error("\nDeployment failed:");
-    console.error(error);
-    throw error;
-  }
 }
 
 main()

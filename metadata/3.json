@@ -1,20 +1,40 @@
 {
-    "name": "WA Nature Home",
-    "address": "183 Woodland Drive, Camano Island, WA 98282",
-    "description": "Comfy island home on Camano Island",
-    "image": "https://ipfs.io/ipfs/QmQUozrHLAusXDxrvsESJ3PYB3rUeUuBAvVWw6nop2uu7c/3.png",
+    "name": "Warm Suburban Retreat",
+    "address": "789 Sunset Boulevard, Harmony Town, CA 90210",
+    "description": "A modern suburban house with warm beige tones and wooden accents, offering a cozy and inviting atmosphere in a serene neighborhood.",
+    "image": "https://indigo-tiny-aardvark-637.mypinata.cloud/ipfs/QmPhK1RqwbKbRuAppimvhnXMJXaQP9u9PGfb8KkGgWg6Sp",
     "id": "3",
     "attributes": [
         {
-            "trait_type": "Purchase Price",
-            "value": 10
+            "trait_type": "Monthly Rent",
+            "value": 2.0,
+            "currency": "ETH"
         },
         {
-            "trait_type": "Type of Residence",
-            "value": "Single family residence"
+            "trait_type": "Security Deposit",
+            "value": 4.0,
+            "currency": "ETH"
         },
         {
-            "trait_type": "Bed Rooms",
+            "trait_type": "Minimum Lease Term",
+            "value": 12,
+            "unit": "months"
+        },
+        {
+            "trait_type": "Maximum Lease Term",
+            "value": 36,
+            "unit": "months"
+        },
+        {
+            "trait_type": "Property Type",
+            "value": "Single-Family Home"
+        },
+        {
+            "trait_type": "Furnishing Status",
+            "value": "Semi-Furnished"
+        },
+        {
+            "trait_type": "Bedrooms",
             "value": 3
         },
         {
@@ -23,11 +43,52 @@
         },
         {
             "trait_type": "Square Feet",
-            "value": 2202
+            "value": 1800
         },
         {
             "trait_type": "Year Built",
-            "value": 2020
+            "value": 2022
+        },
+        {
+            "trait_type": "Pet Policy",
+            "value": "Allowed with Additional Fee"
+        },
+        {
+            "trait_type": "Parking",
+            "value": "2-Car Garage and Driveway"
+        },
+        {
+            "trait_type": "Utilities Included",
+            "value": ["Water", "Garbage"]
+        },
+        {
+            "trait_type": "Available From",
+            "value": "2024-12-15"
+        },
+        {
+            "trait_type": "Amenities",
+            "value": [
+                "Private Garden",
+                "Outdoor Patio",
+                "Energy-Efficient Appliances",
+                "Community Playground Nearby"
+            ]
+        },
+        {
+            "trait_type": "Maintenance",
+            "value": "Landlord covers structural maintenance"
         }
-    ]
+    ],
+    "rental_terms": {
+        "payment_schedule": "Monthly",
+        "late_fee": "0.1 ETH after the 10th of the month",
+        "maintenance_responsibility": "Landlord handles major repairs, tenant responsible for minor fixes",
+        "utility_responsibility": "Tenant pays electricity and gas",
+        "subletting_policy": "Allowed with prior approval",
+        "move_in_fees": {
+            "application_fee": "0.04 ETH",
+            "cleaning_fee": "0.08 ETH",
+            "key_deposit": "0.04 ETH"
+        }
+    }
 }
