@@ -60,6 +60,7 @@ contract RentalEscrow {
     mapping(uint256 => uint256) public rentalStartDate; // 租期开始时间
     mapping(uint256 => uint256) public rentalEndDate;   // 租期结束时间
     mapping(uint256 => uint256) public lastRentPayment; // 上次租金支付时间
+    mapping(uint256 => uint256) public rentalStart; // 租期开始时间
 
     mapping(uint256 => mapping(address => bool)) public approval;
 
@@ -109,29 +110,21 @@ contract RentalEscrow {
     }
 
     // 租客直接支付押金和首月租金开始租赁
-    function startRental(uint256 _nftID, uint256 _durationInMonths) public payable {
+    function startRental(uint256 _nftID, uint256 _duration) public payable {
         require(propertyStatus[_nftID] == RentalStatus.Available, "Property not available");
-        require(_durationInMonths > 0, "Invalid rental duration");
-        
-        uint256 totalAmount = rentalPrice[_nftID] + securityDeposit[_nftID];
-        require(msg.value == totalAmount, "Incorrect payment amount");
-        
+        require(msg.value >= rentalPrice[_nftID] + securityDeposit[_nftID], "Insufficient payment");
+
+        // 设置租客为当前调用者（MetaMask 地址）
         tenant[_nftID] = msg.sender;
-        rentalDuration[_nftID] = _durationInMonths;
-        rentalStartDate[_nftID] = block.timestamp;
-        rentalEndDate[_nftID] = block.timestamp + (_durationInMonths * 30 days);
-        lastRentPayment[_nftID] = block.timestamp;
+        
+        // 更新租赁状态
         propertyStatus[_nftID] = RentalStatus.Rented;
         
-        // 转移首月租金给房东
-        payable(landlord).transfer(rentalPrice[_nftID]);
-        
-        emit RentalStarted(
-            _nftID, 
-            msg.sender, 
-            rentalStartDate[_nftID], 
-            rentalEndDate[_nftID]
-        );
+        // 记录租赁开始时间
+        rentalStart[_nftID] = block.timestamp;
+        rentalDuration[_nftID] = _duration;
+
+        emit RentalStarted(_nftID, msg.sender, block.timestamp, _duration);
     }
     
     // 支付月租

@@ -21,6 +21,8 @@ const Home = ({ property, provider, account, rentalEscrow, togglePop }) => {
         endDate: null
     })
 
+    const [currentMetaMaskAddress, setCurrentMetaMaskAddress] = useState(null);
+
     // 检查角色
     const isCurrentUserTenant = currentTenant && account && currentTenant.toLowerCase() === account.toLowerCase()
     const isCurrentUserLandlord = currentLandlord && account && currentLandlord.toLowerCase() === account.toLowerCase()
@@ -60,23 +62,27 @@ const Home = ({ property, provider, account, rentalEscrow, togglePop }) => {
     }
 
     const tenantHandle = async () => {
-        console.log("租客处理")
+        try {
+            console.log("租客处理");
 
-        // 获取当前 provider
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        // 请求用户连接钱包
-        await provider.send("eth_requestAccounts", []);
-        // 获取当前 signer
-        const signer = provider.getSigner()
-        console.log("signer OK: ", signer.getAddress())
+            // 获取当前 provider
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            // 请求用户连接钱包
+            await provider.send("eth_requestAccounts", []);
+            // 获取当前 signer
+            const signer = provider.getSigner();
+            
+            // 获取并设置当前地址
+            const address = await signer.getAddress();
+            setCurrentMetaMaskAddress(address);
+            console.log("当前连接的 MetaMask 地址:", address);
 
-        // 从属性中找到租金和押金
+            // 从属性中找到租金和押金
             const rentAttribute = property.attributes.find(
                 attr => attr.trait_type === "Monthly Rent" || 
                        attr.trait_type === "Rental Price" ||
                        attr.trait_type === "Price"
             );
-            console.log(rentAttribute)
             
             const depositAttribute = property.attributes.find(
                 attr => attr.trait_type === "Security Deposit" || 
@@ -87,23 +93,33 @@ const Home = ({ property, provider, account, rentalEscrow, togglePop }) => {
             const rentPriceStr = rentAttribute.value.toString();
             const securityDepositStr = depositAttribute.value.toString();
 
-            const rentPrice = ethers.utils.parseEther(rentPriceStr)
-            const securityDeposit = ethers.utils.parseEther(securityDepositStr)
-            const totalAmount = rentPrice.add(securityDeposit)
-            console.log("获取租金和押金OK: ", rentPrice, securityDeposit,totalAmount)
+            const rentPrice = ethers.utils.parseEther(rentPriceStr);
+            const securityDeposit = ethers.utils.parseEther(securityDepositStr);
+            const totalAmount = rentPrice.add(securityDeposit);
+            console.log("获取租金和押金OK: ", rentPrice, securityDeposit, totalAmount);
 
-        const landlord = rentalEscrow.landlord()    
-        console.log("交易前记录一下房东地址：", landlord)
-        // const signer = provider.getSigner();
-        console.log("记录一下当前访客地址 signer: ", signer.getAddress() )
-        let transaction = await rentalEscrow.connect(signer).startRental(property.id, 1)
-        console.log("发送交易成功")
-        await transaction.wait()
+            // 调用合约的 startRental 函数
+            let transaction = await rentalEscrow.connect(signer).startRental(property.id, 1, {
+                value: totalAmount,
+                gasLimit: 300000
+            });
+            
+            console.log("发送交易成功");
+            await transaction.wait();
 
-        transaction = await rentalEscrow.connect(signer).approve(property.id)
-        await transaction.wait()
+            // 打印当前租客地址
+            const currentTenantAddress = await rentalEscrow.tenant(property.id);
+            console.log("当前房屋获取租客的地址为：", currentTenantAddress);
 
-        setIsRented(true)
+            // 进行租客批准
+            transaction = await rentalEscrow.connect(signer).approve(property.id);
+            await transaction.wait();
+
+            setIsRented(true);
+        } catch (error) {
+            console.error("Error in tenant handling:", error);
+            setError("Error processing rental request");
+        }
     }
 
     const landlordHandle = async () => {
@@ -372,9 +388,17 @@ const Home = ({ property, provider, account, rentalEscrow, togglePop }) => {
                                     Approve & rentalFinish
                                 </button>
                 
-                                <button className='home__rental' onClick={tenantHandle} disabled={isRented}>
-                                    Rent
-                                </button>
+                                <div>
+                                    <button className='home__rental' onClick={tenantHandle} disabled={isRented}>
+                                        Rent
+                                    </button>
+                                    
+                                    {currentMetaMaskAddress && (
+                                        <div className="metamask-address">
+                                            Connected Address: {currentMetaMaskAddress.slice(0, 6)}...{currentMetaMaskAddress.slice(-4)}
+                                        </div>
+                                    )}
+                                </div>
 
                                 
                             
